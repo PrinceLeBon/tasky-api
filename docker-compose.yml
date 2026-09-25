@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tasky
+      POSTGRES_PASSWORD: tasky
+      POSTGRES_DB: tasky
+    ports:
+      - "5432:5432"
+    volumes:
+      - tasky-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tasky -d tasky"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  mail:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # interface web : http://localhost:8025
+      - "1025:1025" # SMTP
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development # affiche aussi les codes OTP dans les journaux de l'API
+      DATABASE_URL: postgresql://tasky:tasky@db:5432/tasky
+      PORT: 3000
+      JWT_ACCESS_SECRET: dev-access-secret-change-me-please-0123456789
+      JWT_REFRESH_SECRET: dev-refresh-secret-change-me-please-9876543210
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 7
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+      COOKIE_SECURE: "false"
+      COOKIE_PATH: /auth
+      SMTP_HOST: mail
+      SMTP_PORT: 1025
+      MAIL_FROM: TaskyAPI <no-reply@tasky.local>
+      AUTH_REQUIRE_VERIFIED: "true"
+
+volumes:
+  tasky-db:

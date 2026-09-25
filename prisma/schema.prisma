@@ -1,0 +1,78 @@
+// TaskyAPI — schéma de référence du cours « Tasky Web : De Flutter au Web »
+// Compatible avec le cours NestJS (Modules 5 à 20) et l'évolution de la leçon 20.5.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  name          String
+  isVerified    Boolean        @default(false)
+  otpCode       String?
+  otpExpiresAt  DateTime?
+  createdAt     DateTime       @default(now())
+  tasks         Task[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  family     String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+
+  @@index([userId])
+  @@index([family])
+}
+
+/// Une session (famille de refresh tokens) révoquée : déconnexion, ou réutilisation détectée.
+/// Tout jeton de cette famille, même émis après coup, est refusé.
+model RevokedFamily {
+  family    String   @id
+  reason    String
+  revokedAt DateTime @default(now())
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  tasks Task[]
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  clientId    String?   @unique
+  title       String
+  description String?
+  dueDate     DateTime? @db.Date
+  priority    Priority  @default(MEDIUM)
+  done        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId  Int?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+
+  @@index([userId, createdAt])
+}
