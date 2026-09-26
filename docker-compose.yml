@@ -30,6 +30,12 @@ services:
         condition: service_started
     ports:
       - "3000:3000"
+    healthcheck: # permet à « docker compose up --wait » d'attendre que l'API réponde (CI)
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
     environment:
       NODE_ENV: development # affiche aussi les codes OTP dans les journaux de l'API
       DATABASE_URL: postgresql://tasky:tasky@db:5432/tasky
